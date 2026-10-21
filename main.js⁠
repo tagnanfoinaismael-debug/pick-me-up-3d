@@ -1,0 +1,249 @@
+window.gemmes = 1000;
+window.etage = 1;
+const ROLES = ["Tank", "Guerrier", "Mage", "Soigneur", "Assassin"];
+const NAMES = ["Aiden", "Lyra", "Kael", "Valerius", "Elena", "Soren", "Zephyr", "Iris", "Rhadamanys", "Freya"];
+window.mesHeros = [];
+window.equipeActive = [];
+let enCombatEnCours = false;
+
+let scene, camera, renderer, controls;
+let heros3D = [];
+let boss3D;
+
+function init3D() {
+    const container = document.getElementById('canvas-container');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x141419);
+
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 3.5, 6);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffd700, 0.8);
+    dirLight.position.set(5, 10, 5);
+    scene.add(dirLight);
+
+    const floorGeo = new THREE.PlaneGeometry(8, 8);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, roughness: 0.9 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    creerBoss3D();
+    animate3D();
+}
+
+function creerBoss3D() {
+    if (boss3D) scene.remove(boss3D);
+
+    let taille = 1.0 + (window.etage * 0.1);
+    let couleurBoss = window.etage % 2 === 0 ? 0x9b5de5 : 0xe63946;
+
+    const geo = new THREE.BoxGeometry(taille, taille * 1.5, taille);
+    const mat = new THREE.MeshStandardMaterial({ color: couleurBoss, roughness: 0.3 });
+    boss3D = new THREE.Mesh(geo, mat);
+    boss3D.position.set(0, (taille * 1.5) / 2, -2);
+    scene.add(boss3D);
+}
+
+function mettreAJourHeros3D() {
+    heros3D.forEach(h => scene.remove(h));
+    heros3D = [];
+
+    const couleursRole = {
+        "Tank": 0x4cc9f0,
+        "Guerrier": 0xf72585,
+        "Mage": 0x7209b7,
+        "Soigneur": 0x4361ee,
+        "Assassin": 0x4895ef
+    };
+
+    const positionsX = [-1.2, 0, 1.2];
+
+    window.equipeActive.forEach((h, index) => {
+        const geo = new THREE.CylinderGeometry(0.25, 0.25, 0.9, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: couleursRole[h.role] || 0xffffff });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(positionsX[index], 0.45, 1.2);
+        scene.add(mesh);
+        heros3D.push(mesh);
+    });
+}
+
+function animate3D() {
+    requestAnimationFrame(animate3D);
+    controls.update();
+
+    if (boss3D) boss3D.rotation.y += 0.015;
+
+    if (enCombatEnCours) {
+        heros3D.forEach((h, i) => {
+            h.position.y = 0.45 + Math.sin(Date.now() * 0.008 + i) * 0.12;
+        });
+    }
+
+    renderer.render(scene, camera);
+}
+
+function tirageRarete() {
+    let rand = Math.random() * 100;
+    if (rand < 0.5) return 5;
+    if (rand < 4.0) return 4;
+    if (rand < 15.0) return 3;
+    if (rand < 50.0) return 2;
+    return 1;
+}
+
+window.faireInvocation = function() {
+    if (enCombatEnCours) return;
+    if (window.gemmes < 100) { alert("Plus de gemmes !"); return; }
+    window.gemmes -= 100;
+    document.getElementById("gemmes").innerText = window.gemmes;
+
+    let rarete = tirageRarete();
+    let role = ROLES[Math.floor(Math.random() * ROLES.length)];
+    let nom = NAMES[Math.floor(Math.random() * NAMES.length)];
+    let mult = rarete;
+
+    let nouveauHeros = {
+        id: Date.now() + Math.random(),
+        nom: nom,
+        rarete: rarete,
+        role: role,
+        niveau: 1,
+        pv: 100 * mult,
+        atk: 15 * mult
+    };
+
+    window.mesHeros.unshift(nouveauHeros);
+    if (window.equipeActive.length < 3) window.equipeActive.push(nouveauHeros);
+    mettreAJourAffichage();
+};
+
+window.ameliorerHeros = function(index) {
+    if (enCombatEnCours) return;
+    let h = window.mesHeros[index];
+    if (window.gemmes < 50) {
+        alert("Il vous faut 50 gemmes !");
+        return;
+    }
+    window.gemmes -= 50;
+    h.niveau += 1;
+    h.pv += 30 * h.rarete;
+    h.atk += 10 * h.rarete;
+    
+    document.getElementById("gemmes").innerText = window.gemmes;
+    document.getElementById("combat-log").innerText = "⚡ " + h.nom + " Lv." + h.niveau + " !";
+    mettreAJourAffichage();
+};
+
+window.basculerDansEquipe = function(indexInventaire) {
+    if (enCombatEnCours) return;
+    let herosChoisi = window.mesHeros[indexInventaire];
+    let indexDansEquipe = window.equipeActive.findIndex(h => h.id === herosChoisi.id);
+
+    if (indexDansEquipe !== -1) {
+        window.equipeActive.splice(indexDansEquipe, 1);
+    } else {
+        if (window.equipeActive.length < 3) {
+            window.equipeActive.push(herosChoisi);
+        } else {
+            window.equipeActive.shift();
+            window.equipeActive.push(herosChoisi);
+        }
+    }
+    mettreAJourAffichage();
+};
+
+window.lancerDonjon = function() {
+    if (window.equipeActive.length === 0) {
+        document.getElementById("combat-log").innerText = "Erreur : Équipe vide !";
+        return;
+    }
+
+    enCombatEnCours = true;
+    document.getElementById("btn-combat").style.display = "none";
+    document.getElementById("combat-log").innerText = "Affrontement Étage " + window.etage + "...";
+
+    document.getElementById("hp-equipe").innerText = "Équipe PV : 100/100";
+    document.getElementById("hp-boss").innerText = "Boss Étage " + window.etage + " : 100/100";
+
+    setTimeout(function() {
+        document.getElementById("hp-boss").innerText = "Boss Étage " + window.etage + " : 35/100 !";
+        document.getElementById("combat-log").innerText = "⚠️ ATTACK ! Appuie sur le bouton spécial !";
+        document.getElementById("btn-ult").style.display = "block";
+    }, 2000);
+};
+
+window.declencherUltimate = function() {
+    document.getElementById("btn-ult").style.display = "none";
+    
+    let puissanceEquipe = window.equipeActive.reduce((total, h) => total + h.atk + h.pv, 0) * 1.5;
+    let puissanceMonstre = window.etage * 90;
+
+    if (puissanceEquipe >= puissanceMonstre) {
+        let recompense = window.etage * 70;
+        window.gemmes += recompense;
+        window.etage++;
+        document.getElementById("hp-boss").innerText = "Boss PV : 0/100";
+        document.getElementById("combat-log").innerText = "🎉 Victoire Étage " + (window.etage - 1) + " (+ " + recompense + " 💎)";
+        document.getElementById("etage").innerText = window.etage;
+        document.getElementById("gemmes").innerText = window.gemmes;
+        creerBoss3D();
+    } else {
+        document.getElementById("hp-equipe").innerText = "Équipe PV : 0/100";
+        document.getElementById("combat-log").innerText = "❌ Défaite... Renforce ton équipe !";
+    }
+
+    enCombatEnCours = false;
+    document.getElementById("btn-combat").style.display = "block";
+    mettreAJourAffichage();
+};
+
+function mettreAJourAffichage() {
+    let equipeDiv = document.getElementById("equipe");
+    equipeDiv.innerHTML = "";
+    for (let i = 0; i < 3; i++) {
+        let slot = document.createElement("div");
+        slot.className = "hero-slot";
+        if (window.equipeActive[i]) {
+            slot.innerHTML = "<strong>" + window.equipeActive[i].nom + "</strong><br>Lv." + window.equipeActive[i].niveau + " (" + window.equipeActive[i].rarete + "★)";
+        } else {
+            slot.innerHTML = "Slot " + (i+1) + "<br>Vide";
+        }
+        equipeDiv.appendChild(slot);
+    }
+
+    let inventaireDiv = document.getElementById("inventaire");
+    inventaireDiv.innerHTML = "";
+    window.mesHeros.forEach(function(h, index) {
+        let estActif = window.equipeActive.some(item => item.id === h.id);
+        let card = document.createElement("div");
+        card.className = "hero-card rarity-" + h.rarete;
+        
+        card.innerHTML = `
+            <div class="hero-card-info" onclick="window.basculerDansEquipe(${index})">
+                <strong>${h.nom}</strong> [Lv.${h.niveau}] (${h.rarete}★)<br>
+                <small>${h.role} | PV:${h.pv} | ATK:${h.atk} | <span style="color: ${estActif ? '#38ef7d' : '#a1a1aa'}">${estActif ? 'Actif' : 'Réserve'}</span></small>
+            </div>
+            <button class="btn-upgrade" onclick="window.ameliorerHeros(${index})">Lv + (50💎)</button>
+        `;
+        inventaireDiv.appendChild(card);
+    });
+
+    mettreAJourHeros3D();
+}
+
+window.onload = function() {
+    init3D();
+    mettreAJourAffichage();
+};
