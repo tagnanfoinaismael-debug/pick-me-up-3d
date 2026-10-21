@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pick Me Up : Tactical 3D</title>
+    <!-- Moteur 3D Three.js et Contrôles -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="game-container">
+    <h1>Pick Me Up : Donjon Infini 3D</h1>
+
+    <div id="canvas-container">
+        <div class="hp-overlay">
+            <div class="hp-bar-bg" id="hp-equipe">Équipe PV : 100/100</div>
+            <div class="hp-bar-bg" id="hp-boss">Boss Étage 1 : 100/100</div>
+        </div>
+    </div>
+
+    <div class="stats-panel">
+        <span>Gemmes : <span id="gemmes">1000</span> 💎</span> | 
+        <span>Étage : <span id="etage">1</span> 🏰</span>
+    </div>
+    
+    <button class="btn-gacha" onclick="window.faireInvocation()">Invoquer un Héros (100 💎)</button>
+    <button class="btn-dungeon" id="btn-combat" onclick="window.lancerDonjon()">Combattre l'Étage Actuel</button>
+    <button class="btn-ultimate" id="btn-ult" onclick="window.declencherUltimate()">🎮 APPUYER [☐ / X] : ATTAQUE ULTIME !</button>
+    
+    <div class="log-box" id="combat-log">Prêt pour l'exploration...</div>
+    
+    <h2>Équipe Active (3 max) :</h2>
+    <div id="equipe" class="team-grid"></div>
+
+    <h2>Réserve & Amélioration :</h2>
+    <div id="inventaire" class="inventory-grid"></div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
